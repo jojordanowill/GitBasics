@@ -1,0 +1,281 @@
+public class MyBinarySearchTree<Type extends Comparable<Type>> {
+
+    protected Node<Type> root;
+    protected int size;
+    public long comparisons;
+    public int rotations;
+    protected boolean balancing;
+
+
+    public MyBinarySearchTree() {
+        this.root = null;
+        this.rotations = 0;
+        this.balancing = false;
+    }
+
+    public MyBinarySearchTree(boolean balancing) {
+        this.root = null;
+        this.rotations = 0;
+        this.balancing = balancing;
+    }
+
+
+
+
+    protected static class Node<Type extends Comparable<Type>> {
+        public Type item;
+        public Node<Type> left;
+        public Node<Type> right;
+        public int height;
+        public int balanceFactor;
+
+        public Node(Type item) {
+            this.item = item;
+            this.left = null;
+            this.right = null;
+            this.height = 0;
+        }
+
+        @Override
+        public String toString() {
+            return item.toString() + ":H" + height + ":B" + balanceFactor();
+        }
+
+        public int balanceFactor() {
+            int leftHeight = left != null ? left.height : -1;
+            int rightHeight = right != null ? right.height : -1;
+            return leftHeight - rightHeight;
+        }
+    }
+
+
+    protected Node<Type> rebalance(Node<Type> node) {
+        int balance = getBalance(node);
+        if (balance > 1) {
+            if (height(node.right.right) > height(node.right.left)) {
+                node = rotateLeft(node);
+            } else {
+                node.right = rotateRight(node.right);
+                node = rotateLeft(node);
+            }
+        } else if (balance < -1) {
+            if (height(node.left.left) > height(node.left.right)) {
+                node = rotateRight(node);
+            } else {
+                node.left = rotateLeft(node.left);
+                node = rotateRight(node);
+            }
+        }
+        return node;
+    }
+
+    protected int getBalance(Node<Type> node) {
+        if (node == null) {
+            return 0;
+        }
+        return height(node.right) - height(node.left);
+    }
+
+    protected Node<Type> rotateLeft(Node<Type> node) {
+        Node<Type> right = node.right;
+        node.right = right.left;
+        right.left = node;
+        node.height = Math.max(height(node.left), height(node.right)) + 1;
+        right.height = Math.max(height(right.left), height(right.right)) + 1;
+        return right;
+    }
+
+    protected Node<Type> rotateRight(Node<Type> node) {
+        Node<Type> left = node.left;
+        node.left = left.right;
+        left.right = node;
+        node.height = Math.max(height(node.left), height(node.right)) + 1;
+        left.height = Math.max(height(left.left), height(left.right)) + 1;
+        return left;
+    }
+
+    public void add(Type item) {
+        if (item == null) {
+            throw new IllegalArgumentException("item cannot be null");
+        }
+        this.root = add(this.root, item);
+    }
+
+    protected Node<Type> add(Node<Type> node, Type item) {
+        if (node == null) {
+            this.size++;
+            return new Node<>(item);
+        }
+        int cmp = item.compareTo(node.item);
+        if (cmp < 0) {
+            node.left = add(node.left, item);
+        } else if (cmp > 0) {
+            node.right = add(node.right, item);
+        } else {
+            return node; // item already exists
+        }
+        node.height = Math.max(height(node.left), height(node.right)) + 1;
+        if (balancing && Math.abs(getBalance(node)) > 1) {
+            node = rebalance(node);
+        }
+        return node;
+    }
+
+
+    public void remove(Type item) {
+        if (item == null) {
+            throw new IllegalArgumentException("item cannot be null");
+        }
+        this.root = remove(this.root, item);
+    }
+
+    protected Node<Type> remove(Node<Type> node, Type item) {
+        if (node == null) {
+            return null;
+        }
+        int cmp = item.compareTo(node.item);
+        if (cmp < 0) {
+            node.left = remove(node.left, item);
+        } else if (cmp > 0) {
+            node.right = remove(node.right, item);
+        } else {
+            // Node to be removed has been found
+            this.size--;
+            if (node.left == null && node.right == null) {
+                // Node has no children
+                return null;
+            } else if (node.left == null || node.right == null) {
+                // Node has one child
+                return node.left != null ? node.left : node.right;
+            } else {
+                // Node has two children
+                Node<Type> successorParent = node;
+                Node<Type> successor = node.right;
+                while (successor.left != null) {
+                    successorParent = successor;
+                    successor = successor.left;
+                }
+                if (successorParent != node) {
+                    successorParent.left = successor.right;
+                    successor.right = node.right;
+                }
+                successor.left = node.left;
+                if (successorParent == node) {
+                    node.right = successor.right;
+                }
+                node = successor;
+            }
+        }
+        node.height = Math.max(height(node.left), height(node.right)) + 1;
+        if (balancing && (node.balanceFactor() == -2 || node.balanceFactor() == 2)) {
+            if (balanceFactor(node) == -2) {
+                if (balanceFactor(node.left) <= 0) {
+                    node = rotateRight(node);
+                } else {
+                    node = rotateLeftRight(node);
+                }
+            } else {
+                if (balanceFactor(node.right) >= 0) {
+                    node = rotateLeft(node);
+                } else {
+                    node = rotateRightLeft(node);
+                }
+            }
+        }
+        return node;
+    }
+
+    private Node<Type> rotateRightLeft(Node<Type> node) {
+        node.right = rotateRight(node.right);
+        return rotateLeft(node);
+    }
+
+    private Node<Type> rotateLeftRight(Node<Type> node) {
+        node.left = rotateLeft(node.left);
+        return rotateRight(node);
+    }
+
+    protected int balanceFactor(Node<Type> node) {
+        int leftHeight = node.left != null ? node.left.height : -1;
+        int rightHeight = node.right != null ? node.right.height : -1;
+        return leftHeight - rightHeight;
+    }
+
+
+
+    public Type find(final Type item) {
+        return find(item, root);
+    }
+
+    protected Type find(final Type item, final Node subTree) {
+
+        this.comparisons++;
+        if (subTree == null || item == null) {
+            return null;
+        }
+        if (item.compareTo((Type) subTree.item) < 0) {
+            return find(item, subTree.left);
+
+        } else if (item.compareTo((Type) subTree.item) > 0) {
+            return find(item, subTree.right);
+        }
+
+        return (Type) subTree.item;
+
+    }
+
+    public int height() {
+        return height(this.root);
+    }
+
+    private int height(Node<Type> node) {
+        if (node == null) {
+            return -1;
+        }
+        return Math.max(height(node.left), height(node.right)) + 1;
+    }
+    public int size() {
+        return this.size;
+    }
+    public boolean isEmpty() {
+        return size == 0;
+    }
+
+    protected void updateHeight(Node<Type> node) {
+        if (node == null) {
+            return;
+        }
+        int leftHeight = node.left != null ? node.left.height : -1;
+        int rightHeight = node.right != null ? node.right.height : -1;
+        node.height = Math.max(leftHeight, rightHeight) + 1;
+        node.balanceFactor = rightHeight - leftHeight;
+    }
+
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        toString(root, sb);
+        sb.append("]");
+        return sb.toString();
+    }
+
+    private void toString(Node<Type> node, StringBuilder sb) {
+        if (node != null) {
+            if (node.left != null) {
+                toString(node.left, sb);
+                sb.append(", ");
+            }
+            sb.append(node.item).append(":H").append(node.height);
+            if (node.right != null) {
+                sb.append(", ");
+                toString(node.right, sb);
+            }
+        }
+    }
+
+
+
+
+
+
+}
